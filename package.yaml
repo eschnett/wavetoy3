@@ -1,0 +1,86 @@
+# This YAML file describes your package. Stack will automatically generate a
+# Cabal file when you run `stack build`. See the hpack website for help with
+# this file: <https://github.com/sol/hpack>.
+benchmarks:
+  wavetoy3-benchmarks:
+    dependencies:
+      - base
+      - wavetoy3
+      - criterion
+    ghc-options:
+      - -rtsopts
+      - -threaded
+      - -with-rtsopts=-N
+    main: Main.hs
+    source-dirs: benchmark
+category: Other
+description: wavetoy3 is a new Haskeleton package.
+executables:
+  wavetoy3:
+    dependencies:
+      - base
+      - wavetoy3
+    ghc-options:
+      - -rtsopts
+      - -threaded
+      - -with-rtsopts=-N
+    main: Main.hs
+    source-dirs: executable
+extra-source-files:
+  - CHANGELOG.md
+  - LICENSE.md
+  - package.yaml
+  - README.md
+  - stack.yaml
+ghc-options: -Wall
+github: eschnett/wavetoy3
+library:
+  dependencies:
+    - QuickCheck
+    # - ad
+    - base
+    - comonad
+    - distributive
+    - extra
+    - hmatrix
+    - ieee754
+    # - ifcxt
+    - ilist
+    # - linear
+    # - quadrature
+    - unfoldable
+    - validity
+    - validity-vector
+    - vector
+    - vector-integration
+    - vector-space
+  source-dirs: library
+license: MIT
+maintainer: Erik Schnetter
+name: wavetoy3
+synopsis: A new Haskeleton package.
+tests:
+  wavetoy3-test-suite:
+    dependencies:
+      - QuickCheck
+      - base
+      - comonad
+      - either
+      - extra
+      - ieee754
+      - tasty
+      - tasty-discover
+      - tasty-hspec
+      - tasty-quickcheck
+      - unfoldable
+      - validity
+      - vector
+      - vector-space
+      - wavetoy3
+    ghc-options:
+      - -rtsopts
+      - -threaded
+      - -with-rtsopts=-N
+    main: Main.hs
+    source-dirs: test-suite
+version: '1.0.0'
