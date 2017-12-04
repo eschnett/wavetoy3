@@ -1,0 +1,140 @@
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE UndecidableSuperClasses #-}
+
+module Cat
+    ( Cat(..)
+    -- , CatApp(..)
+    , CatId(..)
+    , CatCompose(..)
+    , CatConst(..)
+    , CatVoid
+    , CatProd(..)
+    , CatSum(..)
+    -- , CatCurry(..)
+    , CatUncurry(..)
+    ) where
+
+import Data.Kind
+import Prelude hiding (id, (.))
+import Test.QuickCheck (Arbitrary(..))
+
+
+
+class s k =>
+    Cat
+    (s :: (Type -> Type -> Type) -> Constraint)
+    (k :: Type -> Type -> Type) where
+        type CatOk s k a b :: Constraint
+        -- type Dom s k a b :: Type
+        -- type Dom s k a b = a
+        -- type CoDom s k a b :: Type
+        -- type CoDom s k a b = b
+
+--T  class Cat s k => CatApp s k where
+--T      app :: (CatOk s k a b, CatOk s k (k a b, a) b) => k (k a b, a) b
+
+
+
+data CatId a b where
+    CatId :: CatId a b
+    deriving (Eq, Ord, Read, Show)
+
+instance Arbitrary (CatId a b) where
+    arbitrary = return CatId
+
+instance s CatId => Cat s CatId where
+    type CatOk s CatId a b = a ~ b
+
+
+
+data CatCompose k l c a b where
+    CatCompose :: k c b -> l a c -> CatCompose k l c a b
+    deriving (Eq, Ord, Read, Show)
+
+instance (Arbitrary (k c b), Arbitrary (l a c)) =>
+    Arbitrary (CatCompose k l c a b) where
+        arbitrary = do f <- arbitrary
+                       g <- arbitrary
+                       return (CatCompose f g)
+        shrink (CatCompose f g) = [CatCompose f' g' | (f', g') <- shrink (f, g)]
+
+instance (s (CatCompose k l c), Cat s k, Cat s l) =>
+    Cat s (CatCompose k l c) where
+        type CatOk s (CatCompose k l c) a b = (CatOk s k c b, CatOk s l a c)
+
+
+
+data CatConst a b where
+    CatConst :: b -> CatConst a b
+    deriving (Eq, Ord, Read, Show)
+
+instance s CatConst => Cat s CatConst where
+    type CatOk s CatConst a b = ()
+
+
+
+data CatVoid a b
+
+instance s CatVoid => Cat s CatVoid where
+    type CatOk s CatVoid a b = ()
+
+
+
+data CatProd k l b c a bc where
+    CatProd :: k a b -> l a c -> CatProd k l b c a (b, c)
+
+instance (s (CatProd k l b c), Cat s k, Cat s l) =>
+    Cat s (CatProd k l b c) where
+        type CatOk s (CatProd k l b c) a bc =
+            (CatOk s k a b, CatOk s l a c, bc ~ (b, c))
+
+
+
+data CatSum k l a b ab c where
+    CatSum :: k a c -> l b c -> CatSum k l a b (Either a b) c
+
+instance (s (CatSum k l a b), Cat s k, Cat s l) =>  Cat s (CatSum k l a b) where
+    type CatOk s (CatSum k l a b) ab c =
+        (CatOk s k a c, CatOk s l b c, ab ~ Either a b)
+
+
+
+--TT data CatCurry k b c a lbc where
+--TT     CatCurry :: k (a, b) c -> CatCurry k b c a lbc
+--TT 
+--TT instance Cat k => Cat (CatCurry k b c) where
+--TT     type CatOk (CatCurry k b c) a lbc =
+--TT         (CatOk k (a, b) c, CatOk (CatCurry1 k a) b c, lbc ~ CatCurry1 k a b c)
+--TT 
+--TT instance CatChase k => CatChase (CatCurry k b c) where
+--TT     type CatChaseOk (CatCurry k b c) a lbc =
+--TT         (CatOk (CatCurry k b c) a lbc,
+--TT          CatChaseOk k (a, b) c, CatChaseOk (CatCurry1 k a) b c)
+--TT     chase (CatCurry f) = CatCurry1 f
+--TT 
+--TT data CatCurry1 k a b c where
+--TT     CatCurry1 :: k (a, b) c -> a -> CatCurry1 k a b c
+--TT 
+--TT instance Cat k => Cat (CatCurry1 k a) where
+--TT     type CatOk (CatCurry1 k a) b c = CatOk k (a, b) c
+--TT 
+--TT instance CatChase k => CatChase (CatCurry1 k a) where
+--TT     type CatChaseOk (CatCurry1 k a) b c =
+--TT         (CatOk k (a, b) c, CatChaseOk k (a, b) c)
+--TT     chase (CatCurry1 f x) y = chase f (x, y)
+
+
+
+
+data CatUncurry k l a b ab c where
+    CatUncurry :: k a (l b c) -> CatUncurry k l a b ab c
+
+instance s (CatUncurry k l a b) => Cat s (CatUncurry k l a b) where
+    type CatOk s (CatUncurry k l a b) ab c =
+        (CatOk s l b c, CatOk s k a (l b c), ab ~ (a, b))

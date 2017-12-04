@@ -1,0 +1,178 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
+
+module Fun
+    ( Fun(..)
+    , IntFun(..)
+    , DiffFun(..)
+    ) where
+
+import Data.Kind
+import Data.VectorSpace
+
+import Cat
+import Integration
+
+
+
+class Cat f => Fun f where
+    type FunOk f a b :: Constraint
+    -- type FunOk f a b = (Bounded a, Bounded b, RealFrac a, RealFrac b)
+    type FunOk f a b = (Bounded a, RealFrac a, RealFrac b)
+    restrict :: (CatOk f a b, FunOk f a b) => (a -> b) -> f a b
+    eval :: (CatOk f a b, FunOk f a b) => f a b -> a -> b
+
+instance Fun CatId where
+    restrict _ = CatId
+    eval CatId = id
+
+instance (Fun f, Fun g) => Fun (CatCompose f g x) where
+    type FunOk (CatCompose f g x) a b = (FunOk f x b, FunOk g a x)
+    restrict f = CatCompose undefined undefined -- TODO
+    eval (CatCompose f g) = eval f . eval g
+
+instance Fun CatVoid where
+    restrict _ = CatVoid
+    eval CatVoid = const 0
+
+instance Fun CatConst where
+    type FunOk CatConst a b =
+        (Bounded a, RealFrac a,
+         InnerSpace b, Floating (Scalar b), Ord (Scalar b))
+    restrict f = CatConst (integrate f xmin xmax ^/ realToFrac (xmax - xmin))
+        where (xmin, xmax) = (minBound, maxBound)
+    eval (CatConst x) = const x
+
+instance Fun CatFun where
+   restrict f = CatFun f
+   eval (CatFun f) = f
+
+instance (Fun f, Fun g) => Fun (CatProd f g b c) where
+    type FunOk (CatProd f g b c) a bc = (FunOk f a b, FunOk g a c)
+    restrict f = CatProd (restrict (fst . f)) (restrict (snd . f))
+    eval (CatProd f g) = both (eval f) (eval g)
+
+both :: (a -> b) -> (a -> c) -> a -> (b, c)
+both f g x = (f x, g x)
+
+instance (Fun f, Fun g) => Fun (CatSum f g a b) where
+    type FunOk (CatSum f g a b) ab c = (FunOk f a c, FunOk g b c)
+    restrict f = CatSum (restrict (f . Left)) (restrict (f . Right))
+    eval (CatSum f g) = either (eval f) (eval g)
+
+instance Fun f => Fun (CatCurry f b c) where
+    type FunOk (CatCurry k b c) a lbc = FunOk (CatCurry1 k a) b c
+    -- f :: a -> (b -> c)
+    restrict f = CatCurry undefined -- TODO
+    eval (CatCurry f) = CatCurry1 f
+
+instance Fun g => Fun (CatCurry1 g a) where
+    type FunOk (CatCurry1 g a) b c = FunOk g (a, b) c
+    restrict = undefined
+    eval (CatCurry1 g x) y = eval g (x, y)
+
+instance (Fun f, Fun g) => Fun (CatUncurry f g a b) where
+    type FunOk (CatUncurry k l a b) ab c = (FunOk l b c, FunOk k a (l b c))
+    -- f :: (a, b) -> c
+    -- restrict f = integrate f (minBound, minBound) (maxBound, maxBound)
+    restrict f = CatUncurry undefined -- TODO
+    eval (CatUncurry fg) (x, y) = eval (eval fg x) y
+
+
+
+class Fun fun => IntFun fun where
+    integral :: (CatOk fun a b, FunOk fun a b) => fun a b -> b
+
+instance IntFun CatId where
+    integral CatId = maxBound - minBound
+
+instance (IntFun f, IntFun g) => IntFun (CatCompose f g x) where
+    -- -- This only works if g is bijective
+    -- integral (CatCompose f g) = integral (f / derivative g)
+    integral (CatCompose _ _) = undefined
+
+instance IntFun CatVoid where
+    integral CatVoid = 0
+
+instance IntFun CatConst where
+    integral c@(CatConst y) = y ^* realToFrac (xmax - xmin)
+        where typed :: CatConst a b -> a -> a
+              typed _ = id
+              xmin = typed c minBound
+              xmax = typed c maxBound
+
+instance (IntFun f, IntFun g) => IntFun (CatProd f g b c) where
+    integral (CatProd f g) = (integral f, integral g)
+
+instance (IntFun f, IntFun g) => IntFun (CatSum f g a b) where
+    integral (CatSum f _) = integral f
+
+-- instance (IntFun f, IntFun g) => IntFun (CatUncurry f g a b) where
+--     integral (CatUncurry fg) = _
+
+
+
+class IntFun fun => DiffFun fun where
+    type Dir fun :: Type
+    boundary :: (CatOk fun a b, FunOk fun a b) => Dir fun -> fun a b -> fun a b
+    derivative ::
+        (CatOk fun a b, FunOk fun a b) => Dir fun -> fun a b -> fun a b
+
+-- CatId is not a DiffFun since it cannot represent its derivative.
+
+instance (DiffFun f, DiffFun g) => DiffFun (CatCompose f g x) where
+    type Dir (CatCompose f g x) = Either (Dir f) (Dir g)
+    boundary (Left dir) (CatCompose f g) = CatCompose (boundary dir f) g
+    boundary (Right dir) (CatCompose f g) = CatCompose f (boundary dir g)
+    derivative (Left dir) (CatCompose f g) = CatCompose (derivative dir f) g
+    derivative (Right dir) (CatCompose f g) = CatCompose f (derivative dir g)
+
+instance DiffFun CatVoid where
+    type Dir CatVoid = ()
+    boundary () CatVoid = CatVoid
+    derivative () CatVoid = CatVoid
+
+instance DiffFun CatConst where
+    type Dir CatConst = ()
+    boundary () (CatConst _) = CatConst zeroV
+    derivative () (CatConst _) = CatConst zeroV
+
+instance (DiffFun f, DiffFun g) => DiffFun (CatProd f g b c) where
+    type Dir (CatProd f g b c) = (Dir f, Dir g) -- Dir f ~ Dir g
+    boundary (dirf, dirg) (CatProd f g) =
+        CatProd (boundary dirf f) (boundary dirg g)
+    derivative (dirf, dirg) (CatProd f g) =
+        CatProd (derivative dirf f) (derivative dirg g)
+
+instance (DiffFun f, DiffFun g) => DiffFun (CatSum f g a b) where
+    type Dir (CatSum f g a b) = (Dir f, Dir g)
+    boundary (dirf, dirg) (CatSum f g) =
+        CatSum (boundary dirf f) (boundary dirg g)
+    derivative (dirf, dirg) (CatSum f g) =
+        CatSum (derivative dirf f) (derivative dirg g)
+
+-- instance (DiffFun f, DiffFun g) => DiffFun (CatUncurry f g a b) where
+--     type Dir (CatUncurry f g a b) = Either (Dir f) (Dir g)
+--     boundary = _
+--     derivative (Left dir) (CatUncurry fg) = CatUncurry (derivative dir fg)
+--     derivative (Right dir) (CatUncurry fg) =
+--         CatUncurry $ \x -> derivative dir (eval fg x)
+
+
+
+instance Fun (->) where
+    type FunOk (->) a b =
+        (Bounded a, RealFrac a,
+         InnerSpace b, Floating (Scalar b), Ord (Scalar b))
+    restrict = id
+    eval = id
+
+instance IntFun (->) where
+    integral f = integrate f minBound maxBound
+
+-- instance DiffFun (->) where
+--     type Dir (->) = ()
+--     boundary = _
+--     derivative = _

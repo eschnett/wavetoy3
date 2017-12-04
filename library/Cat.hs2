@@ -1,0 +1,189 @@
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
+
+module Cat
+    ( Cat(..)
+    , CatWrap(..)
+    , CatId(..)
+    , CatCompose(..)
+    , CatVoid(..)
+    , CatConst(..)
+    , CatFun(..)
+    , CatCat(..)
+    , CatProd(..)
+    , CatSum(..)
+    , CatCurry(..)
+    , CatCurry1(..)
+    , CatUncurry(..)
+    -- , CatApp(..)
+    ) where
+
+-- import Control.Arrow
+import Control.Category
+import Data.Kind
+import Test.QuickCheck (Arbitrary(..))
+
+
+
+-- | A subcategory of Hask, implemented as constraint
+class Cat (k :: Type -> Type -> Type) where
+    type CatOk k a b :: Constraint
+    -- type Dom k a b :: Type
+    -- type Dom k a b = a
+    -- type CoDom k a b :: Type
+    -- type CoDom k a b = b
+
+
+
+-- | Function form a Cat
+instance Cat (->) where
+    type CatOk (->) a b = ()
+
+-- -- | Every arrow is a Cat
+-- instance Arrow arr => Cat arr where
+--     type CatOk arr a b = ()
+-- 
+-- -- | Every category is a Cat
+-- instance Category cat => Cat cat where
+--     type CatOk cat a b = ()
+
+
+
+-- | Wrapper to hide the type constructor
+data CatWrap a b where
+    CatWrap :: Cat k => k a b -> CatWrap a b
+
+-- | Every Cat is a Category
+instance Category CatWrap where
+    id = CatWrap CatId
+    CatWrap f . CatWrap g = CatWrap (CatCompose f g)
+
+-- -- | Every Cat is an Arrow
+-- instance Arrow CatWrap where
+--     arr f = CatWrap (CatFun f)
+--     -- first :: a b c -> a (b, d) (c, d)
+--     first (CatWrap f) = CatWrap _
+
+
+
+-- | Identity function
+data CatId a b where
+    CatId :: CatId a b
+    deriving (Eq, Ord, Read, Show)
+
+instance Arbitrary (CatId a b) where
+    arbitrary = return CatId
+
+instance Cat CatId where
+    type CatOk CatId a b = a ~ b
+
+
+
+-- | Function composition
+data CatCompose k l c a b where
+    CatCompose :: k c b -> l a c -> CatCompose k l c a b
+    deriving (Eq, Ord, Read, Show)
+
+instance (Arbitrary (k c b), Arbitrary (l a c)) =>
+    Arbitrary (CatCompose k l c a b) where
+        arbitrary = do f <- arbitrary
+                       g <- arbitrary
+                       return (CatCompose f g)
+        shrink (CatCompose f g) = [CatCompose f' g' | (f', g') <- shrink (f, g)]
+
+instance (Cat k, Cat l) => Cat (CatCompose k l c) where
+    type CatOk (CatCompose k l c) a b = (CatOk k c b, CatOk l a c)
+
+
+
+-- | The non-function
+data CatVoid a b where
+    CatVoid :: CatVoid a b
+    deriving (Eq, Ord, Read, Show)
+
+instance Cat CatVoid where
+    type CatOk CatVoid a b = ()
+
+
+
+-- | The constant function
+data CatConst a b where
+    CatConst :: b -> CatConst a b
+    deriving (Eq, Ord, Read, Show)
+
+instance Cat CatConst where
+    type CatOk CatConst a b = ()
+
+
+
+-- | All functions are a Cat
+data CatFun a b where
+    CatFun :: (a -> b) -> CatFun a b
+
+instance Cat CatFun where
+    type CatOk CatFun a b = ()
+
+
+
+-- | All categories are a Cat
+data CatCat cat a b where
+    CatCat :: cat a b -> CatCat cat a b
+
+instance Category cat => Cat (CatCat cat) where
+    type CatOk (CatCat cat) a b = ()
+
+
+
+-- | Product of two functions
+data CatProd k l b c a d where
+    CatProd :: k a b -> l a c -> CatProd k l b c a (b, c)
+
+instance (Cat k, Cat l) => Cat (CatProd k l b c) where
+    type CatOk (CatProd k l b c) a bc = (CatOk k a b, CatOk l a c, bc ~ (b, c))
+
+
+
+-- | Sum of two functions
+data CatSum k l a b d c where
+    CatSum :: k a c -> l b c -> CatSum k l a b (Either a b) c
+
+instance (Cat k, Cat l) =>  Cat (CatSum k l a b) where
+    type CatOk (CatSum k l a b) ab c =
+        (CatOk k a c, CatOk l b c, ab ~ Either a b)
+
+
+
+-- | Currying a function
+data CatCurry k b c a lbc where
+    CatCurry :: k (a, b) c -> CatCurry k b c a lbc
+
+instance Cat k => Cat (CatCurry k b c) where
+    type CatOk (CatCurry k b c) a lbc =
+        (CatOk k (a, b) c, CatOk (CatCurry1 k a) b c, lbc ~ CatCurry1 k a b c)
+
+-- | Helper type for currying
+data CatCurry1 k a b c where
+    CatCurry1 :: k (a, b) c -> a -> CatCurry1 k a b c
+
+instance Cat k => Cat (CatCurry1 k a) where
+    type CatOk (CatCurry1 k a) b c = CatOk k (a, b) c
+
+
+
+-- | Uncurrying functions
+data CatUncurry k l a b ab c where
+    CatUncurry :: k a (l b c) -> CatUncurry k l a b ab c
+
+instance Cat (CatUncurry k l a b) where
+    type CatOk (CatUncurry k l a b) ab c =
+        (CatOk l b c, CatOk k a (l b c), ab ~ (a, b))
+
+
+
+-- class Cat c k => CatApp c k where
+--     app :: (CatOk c k a b, CatOk c k (k a b, a) b) => k (k a b, a) b

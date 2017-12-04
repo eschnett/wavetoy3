@@ -1,0 +1,79 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+
+module Fun
+    ( Fun(..)
+    -- , IntFun(..)
+    -- , DiffFun(..)
+    ) where
+
+import Data.Either (either)
+import Data.Kind
+
+import Cat
+
+
+
+class Fun f where
+    type FunOk f a b :: Constraint
+    -- restrict :: FunOk f a b => (a -> b) -> f a b
+    eval :: FunOk f a b => f a b -> a -> b
+
+instance Fun CatId where
+    type FunOk CatId a b = a ~ b
+    eval CatId = id
+
+instance (Fun f, Fun g) => Fun (CatCompose f g x) where
+    type FunOk (CatCompose f g x) a b = (FunOk f x b, FunOk g a x)
+    eval (CatCompose f g) = eval f . eval g
+
+instance Fun CatConst where
+    type FunOk CatConst a b = ()
+    eval (CatConst x) = const x
+
+instance Fun CatVoid where
+    type FunOk CatVoid a b = ()
+    eval = undefined
+
+instance (Fun f, Fun g) => Fun (CatProd f g b c) where
+    type FunOk (CatProd f g b c) a bc = (FunOk f a b, FunOk g a c)
+    eval (CatProd f g) = both (eval f) (eval g)
+
+both :: (a -> b) -> (a -> c) -> a -> (b, c)
+both f g x = (f x, g x)
+
+instance (Fun f, Fun g) => Fun (CatSum f g a b) where
+    type FunOk (CatSum f g a b) ab c = (FunOk f a c, FunOk g b c)
+    eval (CatSum f g) = either (eval f) (eval g)
+
+instance (Fun f, Fun g) => Fun (CatUncurry f g a b) where
+    type FunOk (CatUncurry f g a b) ab c =
+        (FunOk g b c, FunOk f a (g b c), ab ~ (a, b))
+    eval (CatUncurry fg) (x, y) = eval (eval fg x) y
+
+
+
+instance Fun (->) where
+    type FunOk (->) a b = ()
+    eval = id
+
+-- instance Cat Fun (->) where
+--     type CatOk Fun (->) a b = ()
+
+
+
+--------------------------------------------------------------------------------
+
+
+
+--T class Fun fun => IntFun fun where
+--T     integral :: FunOk fun a b => fun a b -> b
+--T 
+--T 
+--T 
+--T class IntFun fun => DiffFun fun where
+--T     type Dir fun :: Type
+--T     bndry :: FunOk fun a b => Dir fun -> fun a b -> fun a b
+--T     deriv :: FunOk fun a b => Dir fun -> fun a b -> fun a b

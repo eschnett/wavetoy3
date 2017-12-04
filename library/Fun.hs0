@@ -1,0 +1,57 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+
+module Fun
+    ( Fun(..)
+    , IntFun(..)
+    , DiffFun(..)) where
+
+import Data.Kind
+
+import Cat
+
+
+
+class Fun f where
+    eval :: f a b -> a -> b
+
+
+
+instance Fun (->) where
+    eval = id
+
+instance Cat Fun (->) where
+    type CatOk Fun (->) a b = ()
+
+
+
+instance Cat Fun (CatCompose f g x) where
+    restrict = _
+
+
+
+--------------------------------------------------------------------------------
+
+
+
+--T class CatChase fun => Fun fun where
+--T     restrict :: CatChaseOk fun a b => (a -> b) -> fun a b
+--T 
+--T instance Fun (->) where
+--T     restrict = id
+--T 
+--T instance (Fun f, Fun g) => Fun (CatCompose f g x) where
+--T     restrict = _
+
+
+
+class Fun fun => IntFun fun where
+    integral :: CatChaseOk fun a b => fun a b -> b
+
+
+
+class IntFun fun => DiffFun fun where
+    type Dir fun :: Type
+    bndry :: CatChaseOk fun a b => Dir fun -> fun a b -> fun a b
+    deriv :: CatChaseOk fun a b => Dir fun -> fun a b -> fun a b

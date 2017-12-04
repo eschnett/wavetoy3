@@ -253,7 +253,7 @@ prop_PLC1_eval_const :: Double -> Bounded1 Double -> Bool
 prop_PLC1_eval_const y x =
     let f :: PLC1 N (Bounded1 Double) Double
         f = fromJust $ fromList $ replicate n y
-    in  eval f x ~== y ~~ Acc 1000 [1]
+    in  eval f x ~== y ~~ Acc 1 [1, y]
     where n = fromInteger (natVal (Proxy :: Proxy N))
 
 prop_PLC1_eval_id :: Bounded1 Double -> Bool
@@ -263,7 +263,7 @@ prop_PLC1_eval_id x =
         f = fromJust
             $ fromList [ (fromIntegral i - rx) / rx | i <- [0 .. n - 1] ]
     in
-        eval f x ~== getBounded1 x ~~ Acc 1000 [1]
+        eval f x ~== getBounded1 x ~~ Acc 10 [1, getBounded1 x]
   where
     n  = fromInteger (natVal (Proxy :: Proxy N)) :: Int
     rx = fromIntegral (n - 1) / 2

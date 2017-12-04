@@ -14,7 +14,7 @@ benchmarks:
     main: Main.hs
     source-dirs: benchmark
 category: Other
-description: wavetoy3 is a new Haskeleton package.
+description: wavetoy3 is a Haskell WaveToy implementation.
 executables:
   wavetoy3:
     dependencies:
@@ -27,10 +27,10 @@ executables:
     main: Main.hs
     source-dirs: executable
 extra-source-files:
-  - CHANGELOG.md
-  - LICENSE.md
+  - CHANGELOG.rst
+  - LICENSE.rst
   - package.yaml
-  - README.md
+  - README.rst
   - stack.yaml
 ghc-options: -Wall
 github: eschnett/wavetoy3
@@ -58,7 +58,7 @@ library:
 license: MIT
 maintainer: Erik Schnetter
 name: wavetoy3
-synopsis: A new Haskeleton package.
+synopsis: wavetoy3 is a Haskell WaveToy implementation
 tests:
   wavetoy3-test-suite:
     dependencies:
