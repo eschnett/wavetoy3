@@ -1,0 +1,82 @@
+{-# LANGUAGE OverlappingInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
+
+module Split where
+
+import Data.Kind
+import Data.Proxy
+
+import qualified Data.Vector as V
+-- import qualified Data.Vector.Generic as G
+-- import qualified Data.Vector.Storable as S
+import qualified Data.Vector.Unboxed as U
+
+
+
+--------------------------------------------------------------------------------
+
+
+
+class IfCxt (cxt :: Constraint) where
+    ifCxt :: proxy cxt -> (cxt => a) -> a -> a
+
+instance {-# OVERLAPPABLE #-} IfCxt cxt where
+    ifCxt _ t f = f
+
+
+
+--------------------------------------------------------------------------------
+
+
+
+class Foldable0 fa where
+    type Cont fa :: Type -> Type
+    type Elem fa :: Type
+    foldMap0 :: Monoid m => (Elem fa -> m) -> fa -> m
+
+instance Foldable f => Foldable0 (f a) where
+    type Cont (f a) = f
+    type Elem (f a) = a
+    foldMap0 = foldMap
+
+instance U.Unbox a => Foldable0 (U.Vector a) where
+    type Cont (U.Vector a) = U.Vector
+    type Elem (U.Vector a) = a
+    foldMap0 f xs = U.foldl' (\r x -> r `mappend` f x) mempty xs
+
+
+
+--------------------------------------------------------------------------------
+
+
+
+newtype Vector a = Vector { getVector :: VectorImpl a }
+
+type family VectorImpl a where
+    VectorImpl Int = U.Vector Int
+    VectorImpl a = V.Vector a
+
+deriving instance Eq (VectorImpl a) => Eq (Vector a)
+deriving instance Ord (VectorImpl a) => Ord (Vector a)
+deriving instance Read (VectorImpl a) => Read (Vector a)
+deriving instance Show (VectorImpl a) => Show (Vector a)
+
+instance {-# OVERLAPS #-} IfCxt (U.Unbox Int, Foldable0 (U.Vector Int)) where
+    ifCxt _ t f = t
+
+instance Foldable Vector where
+    foldMap :: forall m a . Monoid m => (a -> m) -> Vector a -> m
+    foldMap f (Vector xs) =
+        ifCxt (Proxy :: Proxy (U.Unbox a, Foldable0 (VectorImpl a), Elem (VectorImpl a) ~ a))
+                  (foldMap0 f xs)
+                  (foldMap0 f xs)
+                  -- (mempty :: m)

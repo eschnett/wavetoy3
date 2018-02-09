@@ -1,6 +1,14 @@
--- You can benchmark your code quickly and effectively with Criterion. See its
--- website for help: <http://www.serpentine.com/criterion/>.
 import Criterion.Main
 
+import qualified SimpleEvol as S
+
 main :: IO ()
-main = defaultMain [bench "const" (whnf const ())]
+main = defaultMain [bench "SimpleEvol" (whnf (simple 1) 0)]
+
+
+
+simple :: Int -> Double -> Double
+simple n x =
+    let u  = S.initial x
+        us = iterate S.rk2 u
+    in  S.norm2 (head (drop n us))

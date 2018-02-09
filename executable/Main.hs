@@ -1,7 +1,19 @@
--- It is generally a good idea to keep all your business logic in your library
--- and only use it in the executable. Doing so allows others to use what you
--- wrote in their libraries.
-import qualified Example
+import qualified SimpleEvol as S
 
 main :: IO ()
-main = Example.main
+main = putStrLn (show (simple 5 (sqrt 2)))
+
+
+
+simple :: Int -> Double -> Double
+simple n x =
+    let u  = S.initial x
+        us = iterate S.rk2 u
+    in  S.norm2 (head (drop n us))
+
+
+
+-- import qualified Example
+-- 
+-- main :: IO ()
+-- main = Example.main

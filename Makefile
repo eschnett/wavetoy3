@@ -6,7 +6,7 @@ all: indent lint build test coverage bench doc exec
 setup:
 #	TODO: Remove MacPorts (/opt/local) from PATH
 	stack setup
-	stack install hlint hpack hpack-convert
+	stack install hlint
 
 indent:
 #	find $(DIRS) -name '*.hs' -print0 | xargs -0 -P4 -n1 hindent
@@ -30,7 +30,8 @@ exec: indent
 	stack exec $(EXE)
 
 clean:
-	rm -f report.html
 	stack clean
+	rm -f $(EXE).cabal
+	rm -f report.html
 
 .PHONY: all setup indent lint build test coverage bench doc exec clean

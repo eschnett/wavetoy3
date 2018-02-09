@@ -8,6 +8,16 @@ benchmarks:
       - wavetoy3
       - criterion
     ghc-options:
+      - -ddump-to-file -ddump-simpl
+      - -O2
+      - -funbox-strict-fields
+      - -fexcess-precision
+      - -fllvm -pgmlo /opt/local/bin/opt-mp-3.9 -pgmlc /opt/local/bin/llc-mp-3.9
+      - -optlo-O3
+      - -optlo-enable-fp-mad
+      - -optlo-enable-no-infs-fp-math
+      - -optlo-enable-no-nans-fp-math
+      - -optlo-enable-unsafe-fp-math
       - -rtsopts
       - -threaded
       - -with-rtsopts=-N
@@ -21,6 +31,16 @@ executables:
       - base
       - wavetoy3
     ghc-options:
+      - -ddump-to-file -ddump-simpl -ddump-stranal
+      - -O2
+      - -funbox-strict-fields
+      - -fexcess-precision
+      - -fllvm -pgmlo /opt/local/bin/opt-mp-3.9 -pgmlc /opt/local/bin/llc-mp-3.9
+      - -optlo-O3
+      - -optlo-enable-fp-mad
+      - -optlo-enable-no-infs-fp-math
+      - -optlo-enable-no-nans-fp-math
+      - -optlo-enable-unsafe-fp-math
       - -rtsopts
       - -threaded
       - -with-rtsopts=-N
@@ -40,6 +60,7 @@ library:
     # - ad
     - base
     - comonad
+    - constraints
     - distributive
     - extra
     - hmatrix
@@ -47,6 +68,7 @@ library:
     # - ifcxt
     - ilist
     # - linear
+    - mtl
     # - quadrature
     - unfoldable
     - validity
@@ -54,6 +76,17 @@ library:
     - vector
     - vector-integration
     - vector-space
+  ghc-options:
+    - -ddump-to-file -ddump-simpl -ddump-stranal
+    - -O2
+    - -funbox-strict-fields
+    - -fexcess-precision
+    - -fllvm -pgmlo /opt/local/bin/opt-mp-3.9 -pgmlc /opt/local/bin/llc-mp-3.9
+    - -optlo-O3
+    - -optlo-enable-fp-mad
+    - -optlo-enable-no-infs-fp-math
+    - -optlo-enable-no-nans-fp-math
+    - -optlo-enable-unsafe-fp-math
   source-dirs: library
 license: MIT
 maintainer: Erik Schnetter

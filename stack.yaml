@@ -15,7 +15,8 @@
 # resolver:
 #  name: custom-snapshot
 #  location: "./custom-snapshot.yaml"
-resolver: lts-9.18
+# resolver: lts-10.3
+resolver: lts-10.4
 
 # User packages to be built.
 # Various formats can be used as shown in the example below.
@@ -54,7 +55,7 @@ packages:
 # (e.g., acme-missiles-0.3)
 extra-deps:
   # - polynomial-0.7.3
-  - validity-0.4.0.0
+  - validity-0.4.0.3
   - validity-vector-0.1.0.0
 
 # Override default flag values for local packages and extra-deps
@@ -82,3 +83,9 @@ extra-lib-dirs:
 
 # Allow a newer minor version of GHC than the snapshot specifies
 # compiler-check: newer-minor
+
+# nix:
+#   enable: false                 # true
+#   packages:
+#     - blas
+#     - liblapack

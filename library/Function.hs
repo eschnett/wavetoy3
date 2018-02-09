@@ -52,6 +52,7 @@ class Function f where
   -- a concrete category.
   eval :: FunctionOk f a b => f a b -> a -> b
 
+-- | TODO: Use Representable here instead, with 'tabulate' and 'index'
 class Function f => Discretization f where
   -- | Discretize a function from Hask to this representation. This
   -- is a natural transformation from 'Hask' to 'f'. Generically,
