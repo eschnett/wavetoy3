@@ -38,9 +38,9 @@ resolver: lts-10.4
 packages:
   - .
   - location:
-      # git: https://github.com/eschnett/vector-integration.git
-      # commit: fc20fdd9012a1cd8fd43f863fa309367a2027e05
-      ../vector-integration
+      git: https://github.com/eschnett/vector-integration.git
+      commit: a45903ca2ad020941f5d69ab71af4123606b0682
+      # ../vector-integration
     extra-dep: true
   # - location:
   #     git: https://github.com/mikeizbicki/ifcxt.git
