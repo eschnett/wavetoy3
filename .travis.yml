@@ -14,6 +14,7 @@ addons:
   apt:
     packages:
       - libgmp-dev
+      - liblapack-dev
       - libopenblas-dev
 
 # Caching so the next build will be faster
